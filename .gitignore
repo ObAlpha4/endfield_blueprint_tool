@@ -1,2 +1,3 @@
 .venv
 __pylance__
+__pycache__/
