@@ -35,7 +35,8 @@
 ## 2. 当前阶段
 
 **阶段 1：需求与规则确认 —— 已完成（已结案）**
-**阶段 2：领域模型 + 解析器 —— 下一步（未开始）**
+**阶段 2：领域模型 + 解析器 —— 已完成（2026 复核后落地）**
+**阶段 3：第一部分（线性物料平衡求解）—— 下一步（未开始）**
 
 设计确认一共进行了 6 轮问答，所有**阻塞设计**的问题已全部清零；原先剩的 3 项非阻塞参数（B-7 覆盖偏移、C-4 长度计法、C-3 建造边界）**现已全部定稿**，见 `design/next-steps.md` §1。
 
@@ -43,8 +44,8 @@
 |---|---|---|
 | 0 | 源文件阅读与事实提取（46 设备 / 151 配方 / 6 发电条目） | ✅ 完成 |
 | 1 | A 类数据问题、B 类规则口径、六轮问答全部结案 | ✅ 完成 |
-| 1.5 | 第一个可运行核算器：源数据校验 + 配方树展开 | ✅ 完成（`tools/`；其中重息壤示意图脚本已从工作区移除，产物保留） |
-| 2 | 领域模型落地 + 解析器（从 xlsx/docx 生成规范数据） | ⏭ 待开始 |
+| 1.5 | 第一个可运行核算器（源数据校验 + 配方树展开） | 🗄️ 已停用并删除（树展开原型由阶段 3 的线性求解替代） |
+| 2 | 领域模型落地 + 解析器（从 xlsx/docx 生成规范数据） | ✅ **完成**（`src/endfield/`、`tests/`、`data/derived/sources.json`） |
 | 3 | **第一部分**：配方链路计算（线性物料平衡，含用户选择的起始产物） | ⏭ 待开始 |
 | 4 | 规则验证器（R-001~R-069） | ⏭ 待开始 |
 | 5 | **第二部分**：模块模板库 + 模块内布局 | ⏭ 待开始 |
@@ -74,22 +75,30 @@
 - **顶层容量约束**：全局天有洪炉 ≤ 12 台（R-060，所有基地相加，属于后续阶段的专项约束，不进阶段 1）；电力基准 3 台热能池 × 3200 kW = 9600 kW，1 主基地 + 3 副基地共用电量（R-069）。
 - **优化目标分层**：模块层由用户选择（最省电 / 最省设备 / 最小面积），基地层固定**面积优先**；电力只作为模块层的代价项，不作为可行性约束。
 
-### 3.3 已落地的代码资产（`tools/`，可独立运行）
+### 3.3 已落地的代码资产（阶段 2）
 
-| 脚本 | 作用 | 现状 |
+| 位置 | 作用 | 现状 |
 |---|---|---|
-| `tools/validate_sources.py` | 直接解析 xlsx 原始 XML，断言「接口串格数 = 宽/高」，守住历史掉字符问题 | ✅ 三张表全部通过 |
-| `tools/plan_throughput.py` | 从源数据构建配方图，做产量驱动的树展开 + 设备台数 + 功率 + 规则校验 | ⚠️ 可用，但循环不闭合（见 3.4） |
-| `tools/draw_heavy_loam_schematic.py` | 把重息壤链的展开结果画成 SVG 结构示意图（阶段 1.5 的算法验证示意，不属于阶段 1 的规划范围；该脚本已不在 `tools/` 目录中，其产物仍在 `tools/out/images/`） | 🗄️ 已从工作区移除 |
-| `tools/show_facility.py` | 单设备接口示意图（端口分词 + 旋转方向对齐） | ✅ 输出 `tools/out/images/` |
+| `src/endfield/sources/ooxml.py` | OOXML 读取内核（xlsx 单元格原始串 + docx 段落），不依赖 pandas/openpyxl | ✅ |
+| `src/endfield/sources/parser.py` | 四份源文件 → 规范中间数据；全部断言（含原 `tools/validate_sources.py` 的检查） | ✅ |
+| `src/endfield/sources/emit.py` | 确定性序列化（键排序、精确有理数、无时间戳） | ✅ |
+| `src/endfield/domain/` | 领域模型：`geometry` / `devices` / `recipes` / `logistics` / `blueprint` | ✅ |
+| `src/endfield/items.py` | 111 种物料与品类（solid 92 / liquid 11 / gas 8），规则来自用户确认 | ✅ |
+| `src/endfield/cli.py` | `build` / `check` / `repeat` 三个子命令 | ✅ |
+| `tests/` | 83 项单元测试（分词、端口格、旋转、物流元件、品类、确定性、解析断言、负向测试） | ✅ 全绿 |
+| `data/derived/sources.json` | 规范化中间数据（560 KB），后续所有模块只读这一份 | ✅ 逐字节可重复 |
+| `tools/validate_sources.py` | 源数据校验入口（兼容壳，转调解析器） | ✅ |
+| `tools/show_facility.py` | 单设备接口示意图（读 `sources.json`，已去掉 pandas 依赖） | ✅ 输出 `tools/out/images/` |
+| `tools/endfield.cmd` | 便捷入口：设置 `PYTHONPATH` 后转发 `endfield.cli` | ✅ |
+| ~~`tools/plan_throughput.py`~~ | 树展开原型 | 🗑️ 已删除（算法缺陷，由阶段 3 的线性求解替代） |
 
 ### 3.4 已验证的结论与暴露的缺陷（重要）
 
-**阶段 1 不做任何产线规划**，因此下面这些核算结果只用于**验证算法骨架与规则口径**，不是阶段 1 的交付内容，也不代表阶段 1 要考虑某条具体产线（尤其是息壤产线）。
+**阶段 1/2 不做任何产线规划**，因此下面这些核算结果只用于**验证规则口径**，不是交付内容，也不代表要考虑某条具体产线（尤其是息壤产线）。
 
-- 结构正确的链路示例：`息壤气 ─提纯机(124)→ 重息壤气 ─固气转化机(149)→ 重息壤`，**完全绕开天有洪炉产重息壤**（天有洪炉仅用于产息壤本身）；总额定功率约 375 kW，远低于 9600 kW 基准。此处只作规则口径的示例，不作为阶段 1 的产线规划。
-- **暴露的缺陷**：树形展开无法闭合自持环，物料平衡审计出三处缺口 —— 荞花 −21.00/min、气态赤铜 −15.00/min、砂叶 −7.00/min（其余 18 种物料恰好平衡）。
-- **结论**：必须把「树展开」换成**线性物料平衡求解**（以每条配方投用台数为变量、以物料产消平衡为方程），这也是下一阶段最关键的算法改动。
+- 结构正确的链路示例：`息壤气 ─提纯机(124)→ 重息壤气 ─固气转化机(149)→ 重息壤`，**完全绕开天有洪炉产重息壤**（天有洪炉仅用于产息壤本身）；总额定功率约 375 kW，远低于 9600 kW 基准。此处只作规则口径的示例。
+- **已删除的树展开原型暴露的缺陷**：树形展开无法闭合自持环，已连同产物一并删除（历史输出会漂移，不再保留）。结论保留：**任何固定机组配置**都会在自持环上报出假缺口，缺口大小随目标变化（例如以「中容武陵电池 12/min」为目标时会报荞花 −120、砂叶 −80）。
+- **结论**：必须用**线性物料平衡求解**（以每条配方投用台数为变量、以物料产消平衡为方程）取代树展开，这是下一阶段（步骤 3）最关键的算法改动。
 
 ---
 
@@ -97,11 +106,11 @@
 
 按依赖顺序排列，详细版本见 `design/next-steps.md`。
 
-1. **统一数据入口**：把源 xlsx/docx 解析成规范化中间数据（JSON），设备表「原始值 / 规范值 / 来源行号」三列分立；把 `validate_sources.py` 的断言纳入其中。
-2. **落地领域模型**：按 `design/domain-model.md` 的 `DeviceType` / `Port` / `Recipe` / `DeviceInstance` 等对象实现，坐标与旋转按 G-001 与 `design/global-constraints.md`。
-3. **线性物料平衡求解器（第一部分）**：替换树展开，闭合自持环；输入含**用户选择的起始产物**，输出 `ChainPlan`（每种物料净额、配方投用台数、催化剂净额、外部净进口、起始产物边界）。
+1. ~~**统一数据入口**：把源 xlsx/docx 解析成规范化中间数据（JSON），设备表「原始值 / 规范值 / 来源行号」三列分立；把 `validate_sources.py` 的断言纳入其中~~ ✅ **已完成**（`src/endfield/sources/`）。
+2. ~~**落地领域模型**：按 `design/domain-model.md` 的 `DeviceType` / `Port` / `Recipe` / `DeviceInstance` 等对象实现，坐标与旋转按 G-001 与 `design/global-constraints.md`~~ ✅ **已完成**（`src/endfield/domain/` + 83 项单元测试）。
+3. **线性物料平衡求解器（第一部分）**：用线性求解闭合自持环；输入含**用户选择的起始产物**，输出 `ChainPlan`（每种物料净额、配方投用台数、催化剂净额、外部净进口、起始产物边界）；催化剂按「原料分流」或「外部输入」建边，**产物回流当催化的拓扑直接排除**。
 4. **规则验证器**：R-001~R-069 逐条可独立运行，含密度最高的几何校验（覆盖、贴靠、连通性、重叠），并按 C-4（长度只算连续段）与 C-3（边界 = 基地矩形）落地。
-5. **模块模板库 → 模块内布局 → 基地层拼接与布线（第二部分）→ 可视化导出**：模块边界与起始产物对齐，模块内成型催化剂的同源限速分流；蓝图 JSON 必须包含设备位置、设备运作的配方、输出口产物标记。
+5. **模块模板库 → 模块内布局 → 基地层拼接与布线（第二部分）→ 可视化导出**：模块边界与起始产物对齐，模块内成型催化剂的分流支路（原料分流或外部输入，不做产物回流）；蓝图 JSON 必须包含设备位置、设备运作的配方、输出口产物标记。
 6. **贯穿性工作**：为每台反应池记录输出选择（`recipeId` 语义为「预期值」，设备按输入自动选配方）。
 
 **未决参数：已清零**（2026 复核后定稿）：
@@ -135,11 +144,18 @@ endfield_blueprint_tool/
 │   ├── coverage-geometry.md    供电桩 / 气体散布机覆盖几何（整数格集合 + 居中偏移）
 │   ├── logistics-and-storage-geometry.md  物流元件与存取线连接
 │   └── global-constraints.md   全局约束 G-001 与物流元件端口模型
+├── src/endfield/         阶段 2 的代码资产（解析器 + 领域模型）
+│   ├── sources/                ooxml / parser / emit
+│   ├── domain/                 geometry / devices / recipes / logistics / blueprint
+│   ├── items.py                111 种物料与品类（规则来自用户确认）
+│   └── cli.py                  build / check / repeat
+├── tests/                单元测试（83 项，标准库 unittest）
+├── data/derived/         解析器产出的规范化中间数据（sources.json）
 ├── tools/                可运行工具（Python 3.12，用 .venv）
-│   ├── validate_sources.py
-│   ├── plan_throughput.py
-│   ├── show_facility.py
-│   └── out/                    生成物（plan_output.txt、images/*.svg；含已移除的示意图脚本的产物）
+│   ├── validate_sources.py     源数据校验入口（转调解析器）
+│   ├── show_facility.py        单设备接口示意图（读 sources.json）
+│   ├── endfield.cmd            便捷入口（设置 PYTHONPATH 后转发 cli）
+│   └── out/images/             生成物（*.svg）
 ├── README.md             入口：目录说明 + 快速验证命令
 └── .disable/             已停用文件的归档（只进不出，不参与开发）
     ├── README.md               归档清单与停用原因
@@ -154,20 +170,28 @@ endfield_blueprint_tool/
 
 ## 6. 怎么跑
 
-环境：Python 3.12（`.venv`，已装 pandas / openpyxl / IPython 等）。
+环境：Python 3.12（`.venv`）。解析器与领域模型**只用标准库**（不依赖 pandas / openpyxl）；
+`show_facility.py` 已改为读 `sources.json`，同样不依赖 pandas。
 
 ```powershell
-# 校验源数据（接口串格数 = 宽/高；配方表结构；发电表数值）
+# 让 src/ 下的包可被导入（仓库根目录执行一次）
+$env:PYTHONPATH = "$PWD\src"
+
+# 1) 校验源数据（接口串格数 = 宽/高；配方表结构；发电表数值）
 .venv\Scripts\python.exe tools\validate_sources.py
 
-# 产能核算：目标产物 + 目标产量 [/min] [min_devices|min_power]
-.venv\Scripts\python.exe tools\plan_throughput.py 重息壤 12
-.venv\Scripts\python.exe tools\plan_throughput.py 水蒸气 100 min_power
-# 结果写入 tools\out\plan_output.txt
+# 2) 生成规范化中间数据（写 data\derived\sources.json）
+.venv\Scripts\python.exe -m endfield.cli build
+.venv\Scripts\python.exe -m endfield.cli repeat      # 校验逐字节可重复
 
-# 画单个设备的接口示意图
+# 3) 单元测试
+.venv\Scripts\python.exe -m unittest discover -s tests -t .
+
+# 4) 画设备的接口示意图（默认两台转化机；可给设备名或 --all）
 .venv\Scripts\python.exe tools\show_facility.py
+.venv\Scripts\python.exe tools\show_facility.py --all
 ```
 
-> 三个脚本都可以直接从**仓库根目录**运行，路径均按脚本自身位置解析；生成物统一写入 `tools\out\`。
-> 两段式系统的第一部分（配方链路计算）尚未落地，`tools/plan_throughput.py` 是要被它替换的树展开原型。
+> 所有入口都可以直接从**仓库根目录**运行，路径均按脚本自身位置解析。
+> `tools/endfield.cmd check|build|repeat` 是等价的便捷入口（内部会设置 `PYTHONPATH`）。
+> 两段式系统的第一部分（配方链路计算）尚未落地，阶段 3 才开始。

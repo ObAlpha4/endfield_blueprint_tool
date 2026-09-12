@@ -1,8 +1,29 @@
 # M0：文件解析与领域建模设计
 
-状态：**已确认**（原「待确认」条目已由 A 类、B 类与六轮问答逐条结案；取值以 `design/baseline-rules.md` 为准，未决参数已清零，见 `design/next-steps.md` §1）
+状态：**已确认并已实现**（原「待确认」条目已由 A 类、B 类与六轮问答逐条结案；取值以 `design/baseline-rules.md` 为准，未决参数已清零，见 `design/next-steps.md` §1）
 
-本阶段定义四份输入文件的解析结果和领域模型。设备布局、物流布线、仿真与蓝图导出属于后续阶段；解析器已由 `tools/validate_sources.py` 先行验证「格数 = 宽/高」这一条不变量。
+**实现状态（阶段 2 已完成）**：本文件的 §2–§6 已落地为 `src/endfield/`。
+
+| 本文章节 | 实现位置 |
+|---|---|
+| §2 设备实体清单 | `src/endfield/domain/devices.py`（`DeviceType` / `build_ports`） |
+| §3 标记含义 | `src/endfield/domain/devices.py`（`marker_direction` / `marker_material_kind`） |
+| §4 配方实体 | `src/endfield/domain/recipes.py`（`Recipe` / `Flow`，`outputs: []` = 销毁） |
+| §5 发电实体 | `src/endfield/domain/recipes.py`（`PowerEntry`） |
+| §6.1 基础值对象 | `src/endfield/domain/geometry.py`（`Direction` / `Cell` / `GridRect` / `Rotation`） |
+| §6.2 设备与生产模型 | `src/endfield/domain/devices.py` / `recipes.py` / `blueprint.py`（`ChainPlan` 只定义结构） |
+| §6.3 蓝图与物流模型 | `src/endfield/domain/{blueprint,logistics}.py` |
+| §7 规则与数据歧义 | 新增条目见 `design/baseline-rules.md` §4.2 的「阶段 2 复核新增」 |
+| §8 验收标准 | `tests/`（83 项）+ `endfield.cli check/build/repeat` |
+
+三处**实现期新增决议**（用户确认）：
+
+1. **物品品类**：源文件没有物品表，`Item.kind` 由用户确认的关键词规则判定 —— 命中**容器例外**名单 → 固体；否则显式液体名单（清水 / 沉积酸 / 污水 / 壤晶废液 / 惰性壤晶废液）∪ 含「液化」∪ 含「溶液」→ 液体；含「气」（覆盖「气态」）→ 气体；其余固体。全量 111 种物料无冲突（**solid 92 / liquid 11 / gas 8**）。
+   容器例外由用户补充确认：**「容器名里含『溶液』的，本身属于固体（物品）」**；源表里这类名字恰好 4 个（`蓝铁瓶（装有芽针溶液）`、`蓝铁瓶（装有锦草溶液）`、`赤铜瓶（装有芽针溶液）`、`赤铜瓶（装有锦草溶液）`），已逐一列入 `CONTAINER_EXCEPTIONS`，不靠「瓶 / 罐」关键词猜测。
+2. **`协议核心` 是特殊设备**：保留设备表第 47 行的权威规格与端口，但不进常规设备列表（`devices`），单列在 `specialDevices`；语义是「每个基地必须有且只能 1 个」（R-006），属于基地骨架而非产线设备。
+3. **物流元件共 12 种**：规则段 2 的 10 种器件 + 物品弯段 + 管道弯段；用户确认**物品弯段与管道弯段分开计算**（两张独立网络上的元件，各自成一种）。
+
+本阶段定义四份输入文件的解析结果和领域模型。设备布局、物流布线、仿真与蓝图导出属于后续阶段；解析器把「格数 = 宽/高」等断言固化为可重复运行的自检，并产出逐字节一致的规范化中间数据。
 
 ## 1. 输入文件与范围
 
@@ -254,10 +275,16 @@
 
 本阶段的验收已由两部分承担：
 
-- **自动化**：`tools/validate_sources.py` 从原始 OOXML 直接断言「四面接口串分词格数 = 宽/高」（46 行 0 错）以及配方表结构、发电表数值。
-- **人工抽查**：设备表的名称/尺寸/耗电/类别；用 `sisisi`、`nfinfin`、`nnnnn`、`nsisisisisisisin` 核对分词；抽查单输入/双输入、单输出/双输出、环境与催化剂配方的单位与源行号；抽查 6 个发电实体（含低容谷地电池 20 秒 / 220kW 示例）。
+- **自动化**：`endfield.sources.parser` 从原始 OOXML 直接断言「四面接口串分词格数 = 宽/高」（46 行 0 错）
+  以及配方表结构、发电表数值、催化剂常量、空产物行的两种语义；`tests/` 83 项用例覆盖端口格映射、
+  旋转、物流元件端口数、物品品类、确定性序列化，并含**负向测试**（掉字符 / `nnfinn`→`nfnn` 必须被拦住）。
+  入口：`tools/validate_sources.py`（兼容壳）或 `python -m endfield.cli check`。
+- **人工抽查**：设备表的名称/尺寸/耗电/类别；用 `sisisi`、`nfinfin`、`nnnnn`、`nsisisisisisisin` 核对分词；
+  抽查单输入/双输入、单输出/双输出、环境与催化剂配方的单位与源行号；抽查 6 个发电实体
+  （含低容谷地电池 20 秒 / 220kW 示例）。
 - **实现期**：未在本文件冻结的语义（端口连接的几何细节、模块模板、导出格式）一律作为 Schema 评审问题，确认前禁止转化为硬编码规则。
 
 ## 9. 下一步建议
 
-本文件已可转为实现：按 §6 的实体与字段落地领域模型，并复用 `tools/validate_sources.py` 的 `read_sheet` / `tokenize` 作为解析内核。实现顺序与验收标准见 `design/next-steps.md` 步骤 1、步骤 2；其中最关键的算法缺口是**线性物料平衡求解**（替换当前树展开，闭合自持环），见该文件步骤 3。
+步骤 1、步骤 2 已按 §6 的实体与字段落地（见文首的实现状态表）。当前唯一的真实算法缺口是
+**线性物料平衡求解**（闭合自持环，替换已删除的树展开原型），见 `design/next-steps.md` 步骤 3。

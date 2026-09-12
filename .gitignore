@@ -7,3 +7,12 @@ __pycache__/
 # 编辑器
 .vscode/
 .idea/
+
+# 构建产物
+*.egg-info/
+build/
+dist/
+
+# 生成物：规范中间数据与示意图（可由 `endfield.cli build` / `tools/show_facility.py` 重新生成）
+data/derived/
+tools/out/

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "endfield-blueprint-tool"
+version = "0.2.0"
+description = "终末地产线规划器：源文件解析器 + 领域模型（阶段 2）"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+endfield = "endfield.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

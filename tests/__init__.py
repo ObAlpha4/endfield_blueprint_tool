@@ -1,0 +1,10 @@
+"""让 ``python -m unittest discover tests`` 能直接导入 ``src/`` 下的包。"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+SRC = Path(__file__).resolve().parent.parent / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
