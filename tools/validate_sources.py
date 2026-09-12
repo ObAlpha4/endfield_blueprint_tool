@@ -5,7 +5,7 @@
 不经过任何中间转录，用来守住"格数 = 宽/高"这条不变量。
 
 用法：
-    python tests/validate_sources.py          # 从仓库根目录运行
+    .venv\\Scripts\\python.exe tools\\validate_sources.py     # 从仓库根目录运行
 """
 
 from __future__ import annotations
@@ -19,9 +19,10 @@ MAIN = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 VALID_MARKERS = {"si", "so", "fi", "fo", "gi", "go", "n"}
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEVICE_XLSX = REPO_ROOT / "docs" / "设备概述.xlsx"
-RECIPE_XLSX = REPO_ROOT / "docs" / "产线配方.xlsx"
-POWER_XLSX = REPO_ROOT / "docs" / "发电对照.xlsx"
+DOCS_DIR = REPO_ROOT / "docs"
+DEVICE_XLSX = DOCS_DIR / "设备概述.xlsx"
+RECIPE_XLSX = DOCS_DIR / "产线配方.xlsx"
+POWER_XLSX = DOCS_DIR / "发电对照.xlsx"
 
 
 def read_sheet(path: Path, sheet_file: str) -> list[tuple[int, dict[str, str]]]:
@@ -179,4 +180,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # Windows 控制台默认 GBK，中文输出会乱码，这里统一切到 UTF-8。
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     sys.exit(main())

@@ -1,18 +1,21 @@
 """重息壤模拟产线示意图（SVG）。
 
-按 `tests/plan_throughput.py` 的展开结果绘制，用来和实机产线做结构对比。
-输出到 `tests/images/重息壤模拟产线.svg`。
+按 `tools/plan_throughput.py` 的展开结果绘制，用来和实机产线做结构对比。
+输出到 `tools/out/images/重息壤模拟产线.svg`。
 
-诚实声明：图中台数来自**树形展开**，其物料平衡尚未闭合（见 plan_output.txt 的
-审计：荞花 −21.00、气态赤铜 −15.00、砂叶 −7.00 /min）。因此本图是**结构示意图**，
+诚实声明：图中台数来自**树形展开**，其物料平衡尚未闭合（见 `tools/out/plan_output.txt`
+的审计：荞花 −21.00、气态赤铜 −15.00、砂叶 −7.00 /min）。因此本图是**结构示意图**，
 不是可直接施工的蓝图。台数标注带 `~` 前缀。
 
-用法：python tests/draw_heavy_loam_schematic.py
+用法：.venv\\Scripts\\python.exe tools\\draw_heavy_loam_schematic.py
 """
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+OUT_DIR = Path(__file__).resolve().parent / "out" / "images"
 
 W, H = 1820, 1330
 BG = "#f8fafc"
@@ -231,13 +234,14 @@ def build() -> str:
 
 
 def main() -> int:
-    out_dir = Path(__file__).resolve().parent / "images"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "重息壤模拟产线.svg"
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = OUT_DIR / "重息壤模拟产线.svg"
     out_path.write_text(build(), encoding="utf-8")
     print(f"SVG 已保存：{out_path}")
     return 0
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     raise SystemExit(main())

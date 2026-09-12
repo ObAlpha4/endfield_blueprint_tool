@@ -1,24 +1,26 @@
-# 阶段 1.5：现行规则基线与待确认清单
+# 规则基线（R-001 ~ R-069 / G-001）
 
-状态：**A 类、B 类均已结案**；C/D 类待确认
+状态：**A 类、B 类、C/D 类中阻塞项均已结案**；仅剩 3 项非阻塞参数（见 `design/next-steps.md` §1）
 
-本文汇总三处来源，判定当前哪些规则已经可以固定为基线，哪些必须由用户再次确认：
+本文汇总三处来源，固定当前可以实现、可以校验的规则；凡属推测的一律标注来源：
 
 1. `docs/` 四份源文件（唯一权威来源）；
-2. `agents/phase-01-source-summary.md`、`agents/m0-file-parsing-domain-model.md`（已有设计文档）；
-3. `agents/产线规划工具设计总结.json`（此前对话：1 轮总要求 + 6 轮确认，共 7 轮）。
+2. `design/domain-model.md`（领域模型设计文档）；
+3. `.disable/conversation-exports/产线规划工具设计总结.json`（六轮确认对话的原始导出，结论已并入本文与 `design/`）。
 
-几何标定的配套文档：
+几何标定的配套文档（全部在 `design/`）：
 
-- `agents/phase-01-6-b-class-resolutions.md` —— B 类规则与产品决策处置
-- `agents/phase-01-7-coverage-geometry.md` —— 供电桩 / 气体散布机覆盖几何
-- `agents/phase-01-8-logistics-and-storage-geometry.md` —— 物流元件与存取线连接
-- `agents/phase-01-9-global-constraints.md` —— 全局约束 G-001 与物流元件端口模型
-- `agents/phase-01-10-open-questions-round2.md` —— 第二轮待澄清清单
-- `agents/phase-01-11-objectives-and-architecture.md` —— 产出目标、规划架构与催化剂开销
-- `agents/phase-01-12-goals-and-catalyst.md` —— 目标分层、催化剂固定开销 R-061、配方路径选优
-- `agents/phase-01-13-rules-round5.md` —— R-062~R-069、R-060 口径修正、息壤枢纽核算
-- `agents/phase-01-14-round6-heavy-loam.md` —— R-064/Q12/Q11/Q4 定稿，重息壤链路核算
+- `design/global-constraints.md` —— 全局约束 G-001 与物流元件端口模型
+- `design/coverage-geometry.md` —— 供电桩 / 气体散布机覆盖几何
+- `design/logistics-and-storage-geometry.md` —— 物流元件与存取线连接
+
+六轮问答的原始记录已归档到 `.disable/history/`（结论已并入本文；原文含**已作废的早期说法**，不要直接引用）：
+
+- `.disable/history/round2-b-class-resolutions.md` —— B 类规则与产品决策处置
+- `.disable/history/round3-objectives-and-architecture.md` —— 产出目标、规划架构与催化剂开销
+- `.disable/history/round4-goals-and-catalyst.md` —— 目标分层、催化剂固定开销 R-061、配方路径选优
+- `.disable/history/round5-rules.md` —— R-062~R-069、R-060 口径修正、息壤枢纽核算
+- `.disable/history/round6-heavy-loam.md` —— R-064/Q12/Q11/Q4 定稿，重息壤链路核算
 
 判定口径：**只有「源文件直接写明」或「用户在对话中明确确认」的内容才进入基线**；推测、命名统一、几何细节、导出格式一律进入待确认。规则编号 `R-*` 是项目内部引用号，不是源文档编号。
 
@@ -31,7 +33,7 @@
 | A-1 | 源表第 58 行确有录入问题，**用户已修正**：产物由 `赤铜块` 改为 `赤铜瓶`（本次已复核新值，见 §2 A-1） | 配方表重解析；`Recipe` 唯一性约束恢复，自循环边消除 |
 | A-2 | 废水处理机的语义是**把废水「销毁」，因此产物列本就为空**（与净水节点是两回事） | `Recipe.outputs` 允许为空数组，含义是「销毁」；不得与 R-053 净水节点混为一谈 |
 | A-3 | 催化剂是**每分钟固定消耗 6 滴**：固气转化机消耗息壤气，液气转化机消耗液化息壤 | 修正「每次配方固定消耗量」的旧表述；`catalystRatePerMinute = 6`，物料平衡按 6/min 持续扣减 |
-| A-4 | 协议核心接口串格数异常**确为读取问题**，原数据表无误（本次已亲自复核，见 §4.3）。M0 文档的协议核心行经逐字符比对是**正确的**；真正出错的是另外 8 行南面串（见 §4.2） | 以原始 XML 重新解析；M0 文档的 8 处错误已修正，并新增 `tests/validate_sources.py` 守住「格数 = 宽/高」 |
+| A-4 | 协议核心接口串格数异常**确为读取问题**，原数据表无误（本次已亲自复核，见 §4.3）。M0 文档的协议核心行经逐字符比对是**正确的**；真正出错的是另外 8 行南面串（见 §4.2） | 以原始 XML 重新解析；M0 文档的 8 处错误已修正，并新增 `tools/validate_sources.py` 守住「格数 = 宽/高」 |
 | A-5 | 耗电与发电单位均为 `kW` | 发电表列名「电量」应理解为功率；耗电列补单位 |
 | A-6 | R-045 的「每种原料最多 50 个」是**单格缓存上限**，与设备吞吐是两个独立概念 | `maxStackPerSlot = 50` 只用于缓存/溢流判定，不用于限产 |
 | A-7 | **已确认**：每分钟配方次数 = `60 / 反应时间`，对所有设备普遍成立，可从配方表推算；多台设备线性叠加 | 见下方 A-7 节，物料平衡公式就此固定 |
@@ -79,7 +81,7 @@
 
 ### 1.2 坐标、旋转与接口（对话确认）
 
-- **G-001 全局约束：所有设备的顶点与整数坐标对齐**（等价于 `position ∈ ℤ²` 且宽高为整数）。禁止半格/小数坐标。详见 `agents/phase-01-9-global-constraints.md`。
+- **G-001 全局约束：所有设备的顶点与整数坐标对齐**（等价于 `position ∈ ℤ²` 且宽高为整数）。禁止半格/小数坐标。详见 `design/global-constraints.md`。
 - 设备与基地坐标原点均为**自身左下角**；以基地坐标系判断朝向。
 - 未旋转时设备北面朝基地 `+y`；顺时针 90° 后朝 `+x`；再依次 180°、270°。**只能顺时针 90/180/270，禁止镜像**。
 - 每个面的标记排列方向：**北面东→西、南面西→东、西面北→南、东面南→北**；`Port.ordinal` 从 1 起按该方向计数。
@@ -159,7 +161,7 @@
 - 配方 `Sheet1` 第 2–152 行，列结构为 `x1/原料1/x2/原料2/反应时间/y1/产物1/y2/产物2/制作设备/设备环境/催化剂/催化剂速率（min）`。
 - 配方中出现的 31 种制作设备里，26 种在设备表内；5 种不在设备表内，恰好是 R-001 划到蓝图外的资源开采设备（电驱矿机、二型电驱矿机、水驱矿机、水泵、二型耐酸水泵、气体收集泵中的 5 个）。
 - 发电 `Sheet1` 6 条：源矿 1/8s/50kW、低容谷地 1/20s/220kW、中容谷地 1/20s/420kW、高容谷地 1/20s/1100kW、低容武陵 1/20s/1600kW、中容武陵 1/20s/3200kW。
-- 现有代码资产：`tests/show_facility.py`（端口分词已用「遇 `n` 走 1 字符、否则走 2 字符」的正确实现）、`tests/images/*.svg`、`tests/validate_sources.py`（新增，见 §4.2）。
+- 现有代码资产：`tools/show_facility.py`（端口分词已用「遇 `n` 走 1 字符、否则走 2 字符」的正确实现）、`tools/out/images/*.svg`、`tools/validate_sources.py`（见 §4.2）。
 
 ---
 
@@ -186,7 +188,7 @@
 ### A-4 协议核心接口串与 9x9 不符 → **读取错误**
 
 - 结论：原数据表无误，是此前 agent 读取问题。本次以 `xl/worksheets/sheet1.xml` 原始字节复核，D47/E47/F47/G47 分词后均为 **9** 格，与 9x9 完全一致（见 §4.3）。
-- **订正**：`m0-file-parsing-domain-model.md` 的协议核心行经逐字符比对**与原始值完全相同**（`nsisisisisisisin` / `nsonnsonnson`）。本文早前版本称「M0 该行少 1 个字符」是**误判**（人工目测长重复串导致），M0 的协议核心行自始正确。
+- **订正**：`design/domain-model.md` 的协议核心行经逐字符比对**与原始值完全相同**（`nsisisisisisisin` / `nsonnsonnson`）。本文早前版本称「M0 该行少 1 个字符」是**误判**（人工目测长重复串导致），M0 的协议核心行自始正确。
 - 落地：真正的转录错误集中在**其他 8 行的南面串**，已全部修正；解析器必须以原始值为准，并加入「格数 = 宽/高」断言。
 
 ### A-5 功率单位 → **kW**
@@ -207,7 +209,7 @@
 
 ## 3. B 类：**已全部结案**
 
-B-1 至 B-11 的明确答复与落地口径记录在 **`agents/phase-01-6-b-class-resolutions.md`**。摘要：
+B-1 至 B-11 的明确答复与落地口径原始记录在 `.disable/history/round2-b-class-resolutions.md`。摘要：
 
 | 编号 | 结论（一句话） |
 |---|---|
@@ -223,7 +225,7 @@ B-1 至 B-11 的明确答复与落地口径记录在 **`agents/phase-01-6-b-clas
 | B-10 | 3 宽普通面 = `nnn` 面；传送带接对面的 `nsin`/`nson`；源桩与基段无方向性 |
 | B-11 | 协议核心每个取货口独立 30/min（每面 3 出、6 入） |
 
-结案后仅剩 5 处细化余项（B-7 开闭区间、B-9 接口建模、B-10 的 R-004 连接判定、B-6 并行节拍、B-5 污水余量），详见该文档 §10。
+结案后的 5 处细化余项（B-7 开闭区间、B-9 接口建模、B-10 的 R-004 连接判定、B-6 并行节拍、B-5 污水余量）**均已解决或降级**：几何口径见 `design/coverage-geometry.md` 与 `design/logistics-and-storage-geometry.md`，并行节拍与污水余量见 `design/next-steps.md` 步骤 3。
 
 ---
 
@@ -257,15 +259,16 @@ B-1 至 B-11 的明确答复与落地口径记录在 **`agents/phase-01-6-b-clas
   | 拆解机（气体模式） | 南面 | `sososososo` | `sosososososo` |
 
   性质是**长重复串掉落一个字符**，或 `nnfinn` 被压成 `nfnn`。协议核心行不在其列（自始正确）。
-  已新增 `tests/validate_sources.py` 固化「格数 = 宽/高」断言；负向测试确认它能捕获上述两类错误。
+  已新增 `tools/validate_sources.py` 固化「格数 = 宽/高」断言；负向测试确认它能捕获上述两类错误。
 
-  运行方式（仓库根目录）：`.venv\Scripts\python.exe tests\validate_sources.py`，当前输出为三张表全部 OK。
+  运行方式（仓库根目录）：`.venv\Scripts\python.exe tools\validate_sources.py`，当前输出为三张表全部 OK。
 - 规则正文第 5 段仍把 6 台资源开采设备列在「资源开采」类中，但它们不进蓝图；`DeviceType` 表是否收录需明确（目前 46 行不含它们）。
 - 设备表中「灌装机（气体模式）」没有任何配方引用（配方表只有灌装机的普通与液体模式），是待用设备还是缺配方？
 - 设备表中有 25 个设备没有作为「制作设备」出现，属预期：储液罐、储气罐、8 种暗管（含多口）、灌装机（气体模式）、扩容反应池、拆解机（液体/气体模式）、热能池，以及 10 种仓储/协议设施。
 - 配方表第 52、53 行原料数量为 5，与「单格最多 50」不冲突，确认原料数量列可以大于 2。
-- 现有 `tests/show_facility.py` 是 `test.ipynb` 的迁出产物（notebook 已删除）。其中 `_parse_ports` 的实现是正确的；后续如复用 `(index + 0.5) / count` 网格中心定位逻辑，需注意它对应的是 §1.2 已确认的四面方向规则，不要回退到旧的两字符切分。
-- `agents/*.json` 是对话导出文件，不是设计产物；两个 `.md` 才是。`agents/m0-file-parsing-domain-model.md` 已提交为 `step1`，`phase-01-source-summary.md` 在 `a040606`。
+- 现有 `tools/show_facility.py` 是 `test.ipynb` 的迁出产物（notebook 已删除）。其中 `_parse_ports` 的实现是正确的；后续如复用 `(index + 0.5) / count` 网格中心定位逻辑，需注意它对应的是 §1.2 已确认的四面方向规则，不要回退到旧的两字符切分。
+- `tools/plan_throughput.py` 的树展开无法闭合自持环（重息壤 12/min 审计出荞花 −21、气态赤铜 −15、砂叶 −7 /min 的假缺口），须由线性物料平衡求解替换，详见 `design/next-steps.md` 步骤 3。
+- `.disable/conversation-exports/*.json` 是对话导出文件，不是设计产物；结论已并入 `design/`，原文仅作历史留痕。
 
 ### 4.3 原始数据复核结果（权威值，供重抄 M0 用）
 
@@ -295,21 +298,20 @@ B-1 至 B-11 的明确答复与落地口径记录在 **`agents/phase-01-6-b-clas
 
 ---
 
-## 5. 本清单的验收标准
+## 5. 本清单的验收标准（结案状态）
 
 1. ~~A 类 6 项全部给出明确结论~~ **A 类已全部结案**（含 A-7）。
-2. M0 文档设备表按 §4.3 的原始值重抄，并加入「格数 = 宽/高」断言防止再次掉字。
-3. 配方模型写入 A-3、A-6、A-7 的结论；速率公式不再引入额外的「设备吞吐上限表」。
-4. ~~B 类至少完成 B-1、B-2、B-7~~ **B 类已全部结案**，详见 `agents/phase-01-6-b-class-resolutions.md`。
-5. C 类给出「暂不实现」或「引入外部资料」的明确取舍，不留悬空假设。
-6. D 类逐条标注为已知技术债，不进入基线。
+2. ~~M0 文档设备表按 §4.3 的原始值重抄，并加入「格数 = 宽/高」断言~~ **已由 `tools/validate_sources.py` 落实**（46 行 0 错）。
+3. ~~配方模型写入 A-3、A-6、A-7 的结论；速率公式不再引入额外的「设备吞吐上限表」~~ **已在 `tools/plan_throughput.py` 与 `design/domain-model.md` 落实**。
+4. ~~B 类至少完成 B-1、B-2、B-7~~ **B 类已全部结案**，原始记录见 `.disable/history/round2-b-class-resolutions.md`。
+5. ~~C 类给出「暂不实现」或「引入外部资料」的明确取舍~~ **已取舍**：C-1（只输出 JSON）、C-2（设备无限供应，材料清单不在范围内）、C-5（R-067 已给规则）；C-3、C-4 与非阻塞项一并见 `design/next-steps.md` §1。
+6. D 类逐条标注为已知技术债，不进入基线（见 §4.2）。
 7. 所有结论区分「源文件事实 / 用户确认 / 设计推测」三种来源标记。
 
 ## 6. 下一步建议
 
-A 类清零后，可以立刻开始下面两件事，都不依赖剩余待确认项：
+本清单已完成使命 —— **规则基线本身不再阻塞任何事**。后续施工单见 `design/next-steps.md`，起点是：
 
-1. **重解析并重抄设备表**（权威值见 §4.3），把「原始值 / 规范值 / 来源行号」三列分立，并加入「分词格数 = 宽/高」断言；
-2. **落地配方模型**：`inputs/outputs`（允许空数组表示销毁；第 126–129 行需与环境字段区分）、`recipesPerMinute = 60 / durationSeconds`、`catalystRatePerMinute`、`maxStackPerSlot = 50`。
-
-速率公式已固定，物料平衡没有阻塞。B 类结案后，剩余细化余项集中在 **B-7 开闭区间**、**B-9 物流元件接口建模**、**B-10 的 R-004 连接判定**（详见 `agents/phase-01-6-b-class-resolutions.md` §10），建议作为下一轮优先级。
+1. **统一数据入口（解析器）**：把 §4.3 的权威值解析成规范化中间数据，物理上落实「原始值 / 规范值 / 来源行号」三列分立与「分词格数 = 宽/高」断言；
+2. **落地领域模型与配方模型**：按 `design/domain-model.md` 实现 `DeviceType` / `Port` / `Recipe` / `DeviceInstance`，`inputs/outputs` 允许空数组表示销毁（第 126–129 行需与环境字段区分）、`recipesPerMinute = 60 / durationSeconds`、`catalystRatePerMinute = 6`（R-061）、`maxStackPerSlot = 50`；
+3. **线性物料平衡求解**：替换 `tools/plan_throughput.py` 的树展开，闭合自持环（这是当前唯一的真实算法缺口）。

@@ -1,15 +1,18 @@
 """配方图与产能核算器（第二版）。
 
-从 `docs/` 原始数据构建生产图，做以产量为驱动的展开、循环闭合与自洽性校验。
-用于验证已确认的规则，不做布局与布线。
+从 `docs/` 原始数据构建生产图，做以产量为驱动的树展开，再按最终机组配置做
+物料平衡审计。用于验证已确认的规则，不做布局与布线。
 
-本版相对第一版的修正
---------------------
-1. **循环闭合**：第一版是纯树形展开，遇到「重息壤气 ← 固气转化机 ← 息壤」这类
-   回环只能截断，导致把本该内部循环的息壤气算成外部需求。本版先展开，再用
-   回路补偿迭代把循环流量算出来，使外部需求收敛到真正的净进口。
-2. **催化剂参与循环**：R-061 的催化剂需求并入同一套物料平衡，因此
-   「固气转化机自产息壤气、又自己消耗 6/min」会被正确闭合。
+⚠ 已知缺陷（下一版必须替换，不要在树展开上打补丁）
+--------------------------------------------------
+树展开**无法闭合自持环**：遇到「荞花 → 荞花种子 → 荞花」这类回环时只能截断，
+导致审计出假缺口。以「重息壤 12/min」为例，当前会报三处缺口：
+
+    荞花 −21.00 /min、气态赤铜 −15.00 /min、砂叶 −7.00 /min
+
+其余 18 种物料恰好平衡，说明展开的**结构是对的**，只是循环上的机组配比需要
+重新解算。正解是**线性物料平衡求解**（以每条配方投用台数为变量、以物料产消
+平衡为方程），见 `design/next-steps.md` 步骤 3。
 
 已固化规则
 ----------
@@ -22,8 +25,10 @@ R-001 资源开采设备在蓝图外，视为外部来源
 
 用法
 ----
-    python tests/plan_throughput.py 重息壤 12 [目标函数]
-    python tests/plan_throughput.py 水蒸气 100 min_power
+    .venv\\Scripts\\python.exe tools\\plan_throughput.py 重息壤 12 [目标函数]
+    .venv\\Scripts\\python.exe tools\\plan_throughput.py 水蒸气 100 min_power
+
+目标函数：min_devices（默认）/ min_power。结果写入 `tools/out/plan_output.txt`。
 """
 
 from __future__ import annotations
@@ -35,6 +40,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_sources import read_sheet, RECIPE_XLSX, DEVICE_XLSX
+
+OUT_DIR = Path(__file__).resolve().parent / "out"
 
 # ------------------------------------------------------------------ 常量与规则
 
@@ -373,7 +380,8 @@ def main(argv: list[str]) -> int:
     classify_sources(plan, recipes)
 
     text = report(plan, power, recipes)
-    out_path = Path(__file__).resolve().parent / "plan_output.txt"
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = OUT_DIR / "plan_output.txt"
     out_path.write_text(text, encoding="utf-8")
     print(f"已写入 {out_path}")
     print(text)
@@ -381,4 +389,7 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    # Windows 控制台默认 GBK，中文输出会乱码，这里统一切到 UTF-8。
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     sys.exit(main(sys.argv))

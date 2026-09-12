@@ -1,7 +1,42 @@
+"""单设备接口示意图（SVG）。
+
+按《设备概述.xlsx》的四面接口串绘制一台设备的端口位置图，端口标记对齐到对应
+网格单元中心；端口排列方向遵循已确认规则：北面东→西、南面西→东、西面北→南、
+东面南→北（见 `design/baseline-rules.md` §1.2）。
+
+生成物写入 `tools/out/images/{设备名}.svg`。
+
+用法（从仓库根目录运行）：
+    .venv\\Scripts\\python.exe tools\\show_facility.py
+"""
+
+from __future__ import annotations
+
+import sys
 from html import escape
+from pathlib import Path
 
 import pandas as pd
-from IPython.display import SVG, display
+
+# ---------------------------------------------------------------- 路径
+
+def _resolve_docs_dir() -> Path:
+    """定位 `docs/`：优先按本文件位置推断，其次尝试当前工作目录。"""
+    for candidate in (
+        Path(__file__).resolve().parent.parent / "docs",
+        Path.cwd() / "docs",
+        Path.cwd().parent / "docs",
+    ):
+        if (candidate / "设备概述.xlsx").exists():
+            return candidate
+    raise FileNotFoundError("未找到 docs/设备概述.xlsx，请从仓库根目录运行本脚本。")
+
+
+def _resolve_out_dir() -> Path:
+    out = Path(__file__).resolve().parent / "out" / "images"
+    out.mkdir(parents=True, exist_ok=True)
+    return out
+
 
 PORT_COLORS = {
     "固体": "#64748b",
@@ -141,11 +176,7 @@ def draw_device(device_name, facility, chart):
     svg.append("</svg>")
 
     svg_content = "".join(svg)
-    display(SVG(svg_content))
-    from pathlib import Path
-
-    output_path = Path("images") / f"{device_name}.svg"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path = _resolve_out_dir() / f"{device_name}.svg"
     output_path.write_text(svg_content, encoding="utf-8")
     print(f"SVG 已保存：{output_path}")
 
@@ -166,8 +197,12 @@ def test_code(facility, chart):
 
 
 if __name__ == "__main__":
-    facility = pd.read_excel("../docs/设备概述.xlsx", sheet_name="设备列表")
-    chart = pd.read_excel("../docs/设备概述.xlsx", sheet_name="标记对照")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # Windows 控制台默认 GBK
+
+    docs_dir = _resolve_docs_dir()
+    facility = pd.read_excel(docs_dir / "设备概述.xlsx", sheet_name="设备列表")
+    chart = pd.read_excel(docs_dir / "设备概述.xlsx", sheet_name="标记对照")
 
     draw_device("固气转化机（气体产出）", facility, chart)
     draw_device("固气转化机（固体产出）", facility, chart)
