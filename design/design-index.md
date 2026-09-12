@@ -6,12 +6,12 @@
 
 | 顺序 | 文档 | 读它的目的 |
 |---:|---|---|
-| 1 | `PROJECT.md` | 项目目标、当前阶段、已完成、下一步、怎么跑 |
-| 2 | `next-steps.md` | 手头要做的事、阻塞关系、未决项 |
-| 3 | `baseline-rules.md` | 全部已确认规则：单位 / 速率 / A 类 / B 类 / R-001~R-069 / 数据事实 |
+| 1 | `PROJECT.md` | 项目目标、两段式系统结构、当前阶段、已完成、下一步、怎么跑 |
+| 2 | `next-steps.md` | 两段式结构与起始产物约定（§1A）、手头要做的事、参数状态（已清零） |
+| 3 | `baseline-rules.md` | 全部已确认规则：单位 / 速率 / A 类 / B 类 / R-001~R-069 / 覆盖几何结论 / 物流与边界口径 / 转化机催化剂供料 |
 | 4 | `domain-model.md` | 实体、字段、坐标与旋转、配方与发电模型 |
-| 5 | `global-constraints.md` | G-001 整数对齐、旋转锚点、物流元件端口模型 |
-| 6 | `coverage-geometry.md` | 覆盖判定（格心法、相切不算、12x12 / 13x13） |
+| 5 | `global-constraints.md` | G-001 整数对齐（边缘在格线上、顶点在整数坐标）、旋转锚点、物流元件端口模型 |
+| 6 | `coverage-geometry.md` | 覆盖判定（整数格集合、居中偏移、12x12 / 13x13） |
 | 7 | `logistics-and-storage-geometry.md` | 物流元件建模方式、存取线连接判定 |
 
 ## 文档边界（避免重复与漂移）
@@ -19,6 +19,7 @@
 | 主题 | 权威文档 | 其他文档中的处理 |
 |---|---|---|
 | 规则编号与取值口径 | `baseline-rules.md` | 其他文档只引用编号，不复制取值 |
+| 两段式结构与起始产物 | `next-steps.md` §1A | `PROJECT.md` 只写结论与输入输出清单 |
 | 实体与字段 | `domain-model.md` | 其他文档只引用字段名 |
 | 坐标 / 旋转 / 整数对齐 | `global-constraints.md` | `domain-model.md` 只做交叉引用 |
 | 覆盖判定几何 | `coverage-geometry.md` | `baseline-rules.md` 只写结论 |

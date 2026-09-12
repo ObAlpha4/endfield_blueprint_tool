@@ -1,6 +1,6 @@
 # M0：文件解析与领域建模设计
 
-状态：**已确认**（原「待确认」条目已由 A 类、B 类与六轮问答逐条结案；取值以 `design/baseline-rules.md` 为准，未决参数见 `design/next-steps.md` §1）
+状态：**已确认**（原「待确认」条目已由 A 类、B 类与六轮问答逐条结案；取值以 `design/baseline-rules.md` 为准，未决参数已清零，见 `design/next-steps.md` §1）
 
 本阶段定义四份输入文件的解析结果和领域模型。设备布局、物流布线、仿真与蓝图导出属于后续阶段；解析器已由 `tools/validate_sources.py` 先行验证「格数 = 宽/高」这一条不变量。
 
@@ -172,6 +172,10 @@
 
 表示配方行：`id`、`sourceRow`、`inputs[]`、`outputs[]`、`durationSeconds`、`deviceTypeId`、`environment`、`catalyst`、`ratesPerMinute`。
 
+#### `ChainPlan`（第一部分与第二部分的接口）
+
+表示配方链路计算的结果，是**两段式系统**中间的那份契约（见 `design/next-steps.md` §1A）：`targetProduct`、`targetRatePerMinute`、`startProducts[]`（用户选择的起始产物；空表示回溯到 R-001 外部资源）、`recipeUsage[]`（每条配方 + 投用台数）、`materialBalance[]`（每种物料的产出、消耗、净额）、`catalystTotals[]`（催化剂的池化净额，如 `液化息壤 6N`）、`externalInputs[]`、`externalOutputs[]`、`wasteEdges[]`（销毁边）。几何与设备坐标不属于 `ChainPlan`，它只回答「生产什么、多少、谁产谁耗」。
+
 #### `Module`
 
 表示后续布局阶段可复用的生产模块。本阶段只定义接口，不生成模块：`id`、`name`、`deviceInstances[]`、`inputPorts[]`、`outputPorts[]`、`powerDemandKw`、`environmentRequirements[]`、`sourceRefs`。
@@ -188,11 +192,11 @@
 
 #### `PowerPole`
 
-表示供电桩实例：`id`、`position`、`rotation`、`coverage`、`coverageBoundary`（exclusive）、`sourceRef`。覆盖范围是外框且不包含边界；设备是否被覆盖由验证器计算，不由 M0 直接判定。
+表示供电桩实例：`id`、`position`、`rotation`、`coverage`、`sourceRef`。设备 2×2，覆盖范围固定为 12×12 的整数格正方形（`coverage`），且**设备占地严格位于范围正中**（范围相对设备四周各外扩 5 格，见 `design/coverage-geometry.md` §3）。范围不是字段参数，而是由 `position` 直接推出的派生值；设备是否被覆盖由验证器按整数格集合计算（`D ∩ C ≠ ∅`），不由 M0 直接判定。
 
 #### `GasDiffuser`
 
-表示气体散布机及其环境类型：`id`、`position`、`rotation`、`environmentType`、`coverage`、`coverageBoundary`（exclusive）、`environmentPersistence`、`sourceRef`。覆盖范围是外框且不包含边界；输入不断供且速率不低于 6/min 时，产生的环境持续存在，设备进入环境范围后立即生效。名称统一使用 `GasDiffuser`，但源文档“气体散布机”和规则正文可能出现“气体扩散机”，规范名称仍需确认。
+表示气体散布机及其环境类型：`id`、`position`、`rotation`、`environmentType`、`coverage`、`environmentPersistence`、`sourceRef`。设备 3×3，覆盖范围固定为 13×13 的整数格正方形，**设备占地严格位于范围正中**（四周各外扩 5 格）。判定为整数格集合包含关系（`D ⊆ C`）；输入不断供且速率不低于 6/min 时，产生的环境持续存在，设备进入环境范围后立即生效。名称统一使用 `GasDiffuser`，源文档「气体散布机」与规则正文「气体扩散机」指同一设备（B-4 已确认以【气体散布机】为准）。
 
 #### `StorageLine`
 
@@ -200,7 +204,17 @@
 
 #### `Blueprint`
 
-表示最终蓝图的领域容器，但 M0 只定义结构边界：`id`、`baseType`、`bounds`、`origin`、`devices[]`、`modules[]`、`conveyors[]`、`pipes[]`、`powerPoles[]`、`gasDiffusers[]`、`storageLine`、`externalInterfaces[]`、`ruleRefs`、`sourceRefs`。基地坐标原点为基地左下角；建造顺序、材料清单、仿真结果和导出字符串不在 M0 实现。
+表示最终蓝图的领域容器，但 M0 只定义结构边界：`id`、`baseType`、`bounds`、`origin`、`devices[]`、`modules[]`、`conveyors[]`、`pipes[]`、`powerPoles[]`、`gasDiffusers[]`、`storageLine`、`externalInterfaces[]`、`ruleRefs`、`sourceRefs`。基地坐标原点为基地左下角；`bounds` 直接取基地矩形（主基地 80×80 / 副基地 50×50，C-3）。建造顺序、材料清单、仿真结果和导出字符串不在 M0 实现。
+
+蓝图必须能回答用户明确要求的三个问题，对应字段如下：
+
+| 要求 | 落在哪个字段 |
+|---|---|
+| 设备位置 | `DeviceInstance.position` + `rotation`（整数格，G-001） |
+| 设备运作的配方 | `DeviceInstance.recipeId`（一般设备按输入自动选配方，R-062；反应池并行记录多配方） |
+| 输出口的产物标记 | 输出端口 / 取货口 / 准入口的 `itemFilter`（R-007 / R-016 / R-024） |
+
+`externalInterfaces[]` 同时承担**起始产物边界**：用户选定的起始产物在这里表现为仓库取货口输入，未选定的外部资源按 R-001 自动登记。
 
 ## 7. 规则和数据歧义
 
@@ -211,8 +225,8 @@
 5. 管道汇流器入口优先级的先接顺序，以及增加分流器后降低/提高优先级的精确拓扑未定义。
 6. 设备、物流设备、准入口和暗管必须端口类型匹配；普通面不参与连接，但暗管与设备端口的具体连接拓扑仍未完整定义。
 7. 主基地为 80x80，副基地为 50x50；边界是否闭合仍需定义，坐标原点已确定为基地左下角。
-8. 供电桩 12x12 和气体散布机 13x13 的范围指外框且不包含边界；外框相对于设备左下角的具体坐标计算仍需定义。
-9. 气体散布机输入不断供且速率不低于 6/min 时，产生的环境持续存在；设备进入环境范围后环境判定立即生效。环境失效的精确时间点和多个散布机的独立环境状态仍需验证。
+8. 供电桩 12x12 和气体散布机 13x13 的范围都是**压在整数格线上的整数格正方形**，且设备占地严格位于范围正中（供电桩外扩 5 格、气体散布机外扩 5 格）；判定按整数格集合运算，见 `design/coverage-geometry.md`。
+9. 气体散布机输入不断供且速率不低于 6/min 时，产生的环境持续存在；设备进入环境范围后环境判定立即生效。环境失效的精确时间点仍需验证；多个散布机各自独立，范围不可相交、可相切（R-052 / R-065）。
 10. 反应池/扩容反应池多配方并行时，配方槽、缓存格绑定和输出选择未定义。
 11. 废水处理机源表行只有输入和时间没有输出；它与可选净水节点的关系未定义。
 12. 设备模式由设备名称对应固定模式，不在实例中动态切换；同名设备别名和名称规范仍需确认。
@@ -228,12 +242,12 @@
 - 四份文件的来源、单位和行号可追溯。
 - 基地和设备均使用左下角原点；未旋转北面朝基地 `+y`，顺时针 90 度后朝 `+x`，端口占用完整格子。
 - 连接只允许端口类型匹配，普通面不参与连接；物流连续部分被断开元件切分并独立计长。
-- 覆盖范围按不含边界的外框处理，气体环境的持续和立即生效条件被记录。
+- 覆盖范围按整数格集合处理（供电桩 `D ∩ C ≠ ∅`、气体散布机 `D ⊆ C`），范围由设备位置与固定居中偏移推出；气体环境的持续和立即生效条件被记录。
 - 设备表中的名称、尺寸、四面接口串、耗电功率和类别均被保留；源值和规范值不混淆。
 - 七种接口标记的含义和最长匹配分词规则明确。
 - 配方模型支持 0-2 个输入、0-2 个输出、副产物、环境、固定催化剂和源表行号。
 - 发电模型支持燃料/电池、数量、燃烧时间、瞬时发电功率；热能池单电池类型缓存规则被记录，规划阶段不计算电力消耗。
-- 指定的 13 类领域对象均有职责、最小字段和未决边界：`DeviceType`、`DeviceInstance`、`Face`、`Port`、`Recipe`、`Item`、`Module`、`Blueprint`、`Conveyor`、`Pipe`、`PowerPole`、`GasDiffuser`、`StorageLine`。
+- 指定的领域对象均有职责、最小字段和未决边界：`DeviceType`、`DeviceInstance`、`Face`、`Port`、`Recipe`、`Item`、`Module`、`Blueprint`、`Conveyor`、`Pipe`、`PowerPole`、`GasDiffuser`、`StorageLine`、`ChainPlan`。
 - 没有引入布局坐标求解、布线算法或自动补全源文件缺失规格的实现假设。
 
 ### 测试方法
